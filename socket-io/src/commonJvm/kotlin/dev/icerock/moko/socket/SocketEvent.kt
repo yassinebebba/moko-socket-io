@@ -27,7 +27,23 @@ actual sealed class SocketEvent<T> : Mapper<T> {
         )
 
         override fun mapper(array: Array<out Any>): Throwable {
-            return array[0] as Throwable
+            return when (val errorData = array[0]) {
+                is Throwable -> errorData
+                is String -> Exception(errorData)
+                is Map<*, *> -> {
+                    val message = errorData["message"] as? String ?: "Socket error"
+                    Exception(message)
+                }
+                is org.json.JSONObject -> {
+                    val message = try {
+                        errorData.getString("message")
+                    } catch (e: Exception) {
+                        errorData.toString()
+                    }
+                    Exception(message)
+                }
+                else -> Exception("Socket error: $errorData")
+            }
         }
     }
 
